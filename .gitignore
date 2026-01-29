@@ -1,0 +1,61 @@
+# ===================================
+# WhatsApp Automation - Git Ignore
+# ===================================
+
+# WhatsApp Session Data (SENSITIVE!)
+whatsapp_profile/
+
+# Data Files (SENSITIVE!)
+nomor.txt
+promosi.txt
+promosi*.txt
+log_terkirim.txt
+barcode.jpg
+*.jpg
+*.jpeg
+*.png
+*.gif
+
+# Error Screenshots
+error_*.png
+whatsapp_*.png
+
+# Scraper Results
+hasil_*.txt
+hasil_*/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDE Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Chrome Driver Cache
+.wdm/
+chromedriver.exe
+
+# Logs
+*.log
+
+# Temporary Files
+*.tmp
+*.temp
