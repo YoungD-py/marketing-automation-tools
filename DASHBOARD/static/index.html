@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAMARA BOT CONTROL CENTER</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f0d23 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            padding: 20px;
+            color: #00ff88;
+            overflow-x: hidden;
+        }
+        
+        @keyframes drift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(0, 255, 136, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(0, 220, 255, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 1;
+            animation: drift 20s ease-in-out infinite;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: glitch-text 2s ease-in-out infinite;
+        }
+        
+        header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5em;
+            margin-bottom: 10px;
+            color: #00ff88;
+            text-shadow: 0 0 20px #00ff88, 0 0 40px #00ff88, 0 0 60px #00ff88;
+            letter-spacing: 3px;
+            font-weight: 900;
+            position: relative;
+        }
+        
+        header h1::before {
+            content: '█ ';
+            color: #ff00ff;
+        }
+        
+        header h1::after {
+            content: ' █';
+            color: #00ffff;
+        }
+        
+        header p {
+            font-size: 1.2em;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+            letter-spacing: 2px;
+        }
+        
+        @keyframes glitch-text {
+            0%, 100% {
+                text-shadow: 0 0 20px #00ff88, 0 0 40px #00ff88;
+            }
+            50% {
+                text-shadow: 0 0 30px #ff00ff, 0 0 50px #00ffff;
+            }
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: rgba(10, 14, 39, 0.8);
+            border: 2px solid #00ff88;
+            border-radius: 0;
+            padding: 25px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3), inset 0 0 20px rgba(0, 255, 136, 0.1);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ff88, transparent);
+            animation: scan 3s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        .card:hover {
+            border-color: #ff00ff;
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.5), inset 0 0 20px rgba(255, 0, 255, 0.1);
+        }
+        
+        .card h2 {
+            color: #00ffff;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            text-shadow: 0 0 10px #00ffff;
+            border-bottom: 2px solid #00ff88;
+            padding-bottom: 10px;
+            letter-spacing: 2px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 14px 24px;
+            border: 2px solid #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            flex: 1;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.3), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn:hover::before {
+            left: 100%;
+        }
+        
+        .btn-success {
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+        
+        .btn-success:hover {
+            background: rgba(0, 255, 136, 0.3);
+            box-shadow: 0 0 20px #00ff88;
+            text-shadow: 0 0 10px #00ff88;
+        }
+        
+        .btn-danger {
+            border-color: #ff1744;
+            color: #ff1744;
+        }
+        
+        .btn-danger:hover {
+            background: rgba(255, 23, 68, 0.3);
+            box-shadow: 0 0 20px #ff1744;
+            text-shadow: 0 0 10px #ff1744;
+        }
+        
+        .btn-primary {
+            border-color: #00ffff;
+            color: #00ffff;
+        }
+        
+        .btn-primary:hover {
+            background: rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 20px #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+        }
+        
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .status-box {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 18px;
+            border-radius: 0;
+            margin: 15px 0;
+            border: 1px solid #00ff8844;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 12px 0;
+            font-size: 0.95em;
+            letter-spacing: 1px;
+        }
+        
+        .status-label {
+            font-weight: 700;
+            color: #00ffff;
+            text-shadow: 0 0 5px #00ffff;
+        }
+        
+        .status-value {
+            color: #00ff88;
+            font-weight: 600;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 0;
+            font-size: 0.85em;
+            font-weight: 700;
+            border: 2px solid;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .badge-success {
+            border-color: #00ff88;
+            color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+        
+        .badge-danger {
+            border-color: #ff1744;
+            color: #ff1744;
+            background: rgba(255, 23, 68, 0.1);
+            box-shadow: 0 0 10px rgba(255, 23, 68, 0.5);
+        }
+        
+        .log-viewer {
+            background: #000000;
+            color: #00ff88;
+            padding: 18px;
+            border-radius: 0;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+            border: 2px solid #00ff88;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+            position: relative;
+        }
+        
+        .log-viewer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ff88, transparent);
+            animation: scan 2s linear infinite;
+        }
+        
+        .log-entry {
+            margin: 3px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .log-error {
+            color: #ff1744;
+            text-shadow: 0 0 5px #ff1744;
+        }
+        
+        .log-success {
+            color: #00ff88;
+            text-shadow: 0 0 5px #00ff88;
+        }
+        
+        .log-warning {
+            color: #ffff00;
+            text-shadow: 0 0 5px #ffff00;
+        }
+        
+        .log-viewer::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .log-viewer::-webkit-scrollbar-track {
+            background: #000;
+        }
+        
+        .log-viewer::-webkit-scrollbar-thumb {
+            background: #00ff88;
+            border-radius: 0;
+        }
+        
+        .log-viewer::-webkit-scrollbar-thumb:hover {
+            background: #00ffff;
+        }
+        
+        .form-group {
+            margin-bottom: 18px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 700;
+            color: #00ffff;
+            text-shadow: 0 0 5px #00ffff;
+            letter-spacing: 1px;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #00ff88;
+            background: rgba(0, 0, 0, 0.5);
+            color: #00ff88;
+            font-size: 1em;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.5px;
+        }
+        
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: #00ff8866;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #00ffff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+            background: rgba(0, 255, 255, 0.05);
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .file-input-label {
+            display: block;
+            padding: 14px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px dashed #00ff88;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #00ff88;
+            font-weight: 600;
+        }
+        
+        .file-input-label:hover {
+            border-color: #00ffff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+            color: #00ffff;
+        }
+        
+        .file-input-label.has-file {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+        
+        .barcode-list {
+            margin-top: 20px;
+        }
+        
+        .barcode-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #00ff8844;
+            margin: 8px 0;
+            transition: all 0.3s;
+        }
+        
+        .barcode-item:hover {
+            border-color: #00ffff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+        }
+        
+        .barcode-item a {
+            color: #00ffff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .barcode-item a:hover {
+            text-shadow: 0 0 10px #00ffff;
+        }
+        
+        .message {
+            padding: 14px;
+            border-radius: 0;
+            margin-bottom: 12px;
+            display: none;
+            border: 2px solid;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        
+        .message.show {
+            display: block;
+        }
+        
+        .message.success {
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+            border-color: #00ff88;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+        
+        .message.error {
+            background: rgba(255, 23, 68, 0.1);
+            color: #ff1744;
+            border-color: #ff1744;
+            box-shadow: 0 0 15px rgba(255, 23, 68, 0.3);
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: blink 1s ease-in-out infinite;
+        }
+        
+        .status-indicator.running {
+            background: #00ff88;
+            box-shadow: 0 0 10px #00ff88;
+        }
+        
+        .status-indicator.stopped {
+            background: #ff1744;
+            box-shadow: 0 0 10px #ff1744;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .barcode-preview {
+            text-align: center;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #00ff88;
+            border-radius: 0;
+        }
+        
+        .barcode-preview img {
+            max-width: 300px;
+            max-height: 300px;
+            border: 2px solid #00ffff;
+            margin: 15px 0;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            header h1 {
+                font-size: 2em;
+            }
+            
+            .control-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DAMARA PROJECT BOT MONITORING</h1>
+            <p>>> SYSTEM ONLINE >> STATUS: ACTIVE</p>
+        </header>
+        
+        <div class="dashboard-grid">
+            <!-- BOT CONTROL CARD -->
+            <div class="card">
+                <h2>⚡ BOT CONTROL</h2>
+                
+                <div id="statusMessage" class="message"></div>
+                
+                <div class="control-buttons">
+                    <button class="btn btn-success" id="btnStart">▶️ START</button>
+                    <button class="btn btn-danger" id="btnStop">⏹️ STOP</button>
+                </div>
+                
+                <div class="status-box">
+                    <div class="status-item">
+                        <span class="status-label">STATUS:</span>
+                        <span id="botStatus" class="status-value">
+                            <span class="status-indicator stopped"></span>
+                            <span class="badge badge-danger">OFFLINE</span>
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">PROCESS ID:</span>
+                        <span id="botPid" class="status-value">-</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">RESTART COUNT:</span>
+                        <span id="restartCount" class="status-value">0/5</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">LAST UPDATE:</span>
+                        <span id="lastUpdate" class="status-value">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- LAST NUMBER CARD -->
+            <div class="card">
+                <h2>📊 STATUS TERAKHIR</h2>
+                
+                <div class="status-box">
+                    <div class="status-item">
+                        <span class="status-label">NOMOR TERAKHIR:</span>
+                        <span id="lastNumber" class="status-value" style="color: #00ffff;">-</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">FORMAT:</span>
+                        <span class="status-value">+62XXXXXXXXXX</span>
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary" id="btnRefresh" style="width: 100%; margin-top: 10px;">🔄 REFRESH</button>
+            </div>
+            
+            <!-- LOG VIEWER CARD (Full Width) -->
+            <div class="card full-width">
+                <h2>📡 REALTIME LOG STREAM</h2>
+                <div id="logViewer" class="log-viewer">
+                    <div class="log-entry" style="color: #00ffff;">
+> $ ./bot --stream --live
+> Connecting to WebSocket...
+> [WAITING FOR DATA]
+                    </div>
+                </div>
+            </div>
+            
+            <!-- BARCODE GENERATOR CARD (Left) -->
+            <div class="card">
+                <h2>🎨 BARCODE GENERATOR</h2>
+                
+                <form id="barcodeForm">
+                    <div class="form-group">
+                        <label for="placeId">PLACE ID</label>
+                        <input 
+                            type="text" 
+                            id="placeId" 
+                            placeholder="ChIJ--UaaUuN2TER7DyAFdPg0go"
+                            required
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="filename">FILENAME (OPT)</label>
+                        <input 
+                            type="text" 
+                            id="filename" 
+                            placeholder="barcode_filename"
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>LOGO (OPT)</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="logoFile" accept="image/*">
+                            <label for="logoFile" class="file-input-label">
+                                <span id="fileLabel">📁 UPLOAD LOGO</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">⚡ GENERATE</button>
+                </form>
+                
+                <div id="barcodeMessage" class="message"></div>
+            </div>
+            
+            <!-- BARCODE LIST CARD (Right) -->
+            <div class="card">
+                <h2>📦 BARCODE LIST</h2>
+                <div id="barcodeList" class="barcode-list">
+                    <p style="text-align: center; color: #00ffff;">> LOADING...</p>
+                </div>
+            </div>
+            
+            <!-- BARCODE PREVIEW CARD (Full Width) -->
+            <div class="card full-width" id="previewCard" style="display: none;">
+                <h2>👁️ BARCODE PREVIEW</h2>
+                <div class="barcode-preview">
+                    <img id="barcodePreview" alt="Barcode Preview">
+                    <p id="barcodeInfo" style="color: #00ffff; margin-top: 10px;"></p>
+                    <a id="downloadLink" href="#" class="btn btn-primary" style="display: inline-block; margin-top: 10px;">⬇️ DOWNLOAD</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = window.location.origin;
+        let statusRefreshInterval;
+        let lastLogCount = 0;
+        
+        // ============ BOT CONTROL ============
+        document.getElementById('btnStart').addEventListener('click', async () => {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ LOADING...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/bot/start`, { method: 'POST' });
+                const data = await response.json();
+                
+                showMessage(data.message, data.status === 'success' ? 'success' : 'error');
+                updateStatus();
+            } catch (e) {
+                showMessage(`ERROR: ${e.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '▶️ START';
+            }
+        });
+        
+        document.getElementById('btnStop').addEventListener('click', async () => {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ STOPPING...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/bot/stop`, { method: 'POST' });
+                const data = await response.json();
+                
+                showMessage(data.message, data.status === 'success' ? 'success' : 'error');
+                updateStatus();
+            } catch (e) {
+                showMessage(`ERROR: ${e.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '⏹️ STOP';
+            }
+        });
+        
+        document.getElementById('btnRefresh').addEventListener('click', async () => {
+            updateStatus();
+            updateLastNumber();
+            loadBarcodes();
+        });
+        
+        // ============ STATUS UPDATE ============
+        async function updateStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/bot/status`);
+                const data = await response.json();
+                
+                const statusEl = document.getElementById('botStatus');
+                if (data.running) {
+                    statusEl.innerHTML = '<span class="status-indicator running"></span><span class="badge badge-success">ONLINE</span>';
+                    document.getElementById('btnStart').disabled = true;
+                    document.getElementById('btnStop').disabled = false;
+                } else {
+                    statusEl.innerHTML = '<span class="status-indicator stopped"></span><span class="badge badge-danger">OFFLINE</span>';
+                    document.getElementById('btnStart').disabled = false;
+                    document.getElementById('btnStop').disabled = true;
+                }
+                
+                document.getElementById('botPid').textContent = data.pid ? `${data.pid}` : '-';
+                document.getElementById('restartCount').textContent = `${data.restart_count}/${data.max_restarts}`;
+                document.getElementById('lastUpdate').textContent = new Date(data.timestamp).toLocaleTimeString('id-ID');
+            } catch (e) {
+                console.error('Status update error:', e);
+            }
+        }
+        
+        async function updateLastNumber() {
+            try {
+                const response = await fetch(`${API_BASE}/api/bot/last-number`);
+                const data = await response.json();
+                document.getElementById('lastNumber').textContent = data.last_number || 'NO DATA YET';
+            } catch (e) {
+                console.error('Last number error:', e);
+            }
+        }
+        
+        // ============ WEBSOCKET LOG STREAMING ============
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const ws = new WebSocket(`${protocol}//${window.location.host}/ws/logs`);
+            
+            const logViewer = document.getElementById('logViewer');
+            lastLogCount = 0;
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                logViewer.innerHTML = '<div class="log-entry" style="color: #00ffff;">▶ WebSocket connected - streaming active...</div>';
+            };
+            
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                
+                if (msg.type === 'log') {
+                    const entry = document.createElement('div');
+                    entry.className = 'log-entry';
+                    
+                    if (msg.data.includes('ERROR') || msg.data.includes('❌')) {
+                        entry.classList.add('log-error');
+                    } else if (msg.data.includes('✅') || msg.data.includes('SUCCESS')) {
+                        entry.classList.add('log-success');
+                    } else if (msg.data.includes('⚠️') || msg.data.includes('WARNING')) {
+                        entry.classList.add('log-warning');
+                    }
+                    
+                    entry.textContent = msg.data;
+                    logViewer.appendChild(entry);
+                    logViewer.scrollTop = logViewer.scrollHeight;
+                    
+                    lastLogCount++;
+                    if (lastLogCount > 500) {
+                        logViewer.removeChild(logViewer.firstChild);
+                        lastLogCount--;
+                    }
+                } else if (msg.type === 'status') {
+                    updateStatus();
+                }
+            };
+            
+            ws.onerror = (e) => {
+                console.error('WebSocket error:', e);
+                logViewer.innerHTML += '<div class="log-entry log-error">✗ WebSocket error</div>';
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+        
+        // ============ BARCODE ============
+        document.getElementById('logoFile').addEventListener('change', (e) => {
+            const label = document.getElementById('fileLabel');
+            if (e.target.files.length > 0) {
+                label.textContent = `✓ ${e.target.files[0].name}`;
+                document.querySelector('.file-input-label').classList.add('has-file');
+            } else {
+                label.textContent = '📁 UPLOAD LOGO';
+                document.querySelector('.file-input-label').classList.remove('has-file');
+            }
+        });
+        
+        document.getElementById('barcodeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('place_id', document.getElementById('placeId').value);
+            formData.append('filename', document.getElementById('filename').value);
+            
+            const logoFile = document.getElementById('logoFile').files[0];
+            if (logoFile) {
+                formData.append('logo', logoFile);
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/barcode/generate`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showBarcodeMessage(data.message, 'success');
+                    
+                    const previewCard = document.getElementById('previewCard');
+                    document.getElementById('barcodePreview').src = API_BASE + data.url;
+                    document.getElementById('barcodeInfo').textContent = `PLACE ID: ${data.place_id} | FILE: ${data.filename}`;
+                    document.getElementById('downloadLink').href = API_BASE + data.url;
+                    document.getElementById('downloadLink').download = data.filename;
+                    previewCard.style.display = 'block';
+                    
+                    loadBarcodes();
+                } else {
+                    showBarcodeMessage(data.message, 'error');
+                }
+            } catch (e) {
+                showBarcodeMessage(`ERROR: ${e.message}`, 'error');
+            }
+        });
+        
+        async function loadBarcodes() {
+            try {
+                const response = await fetch(`${API_BASE}/api/barcode/list`);
+                const data = await response.json();
+                
+                const list = document.getElementById('barcodeList');
+                
+                if (data.barcodes.length === 0) {
+                    list.innerHTML = '<p style="text-align: center; color: #00ffff;">> NO DATA</p>';
+                } else {
+                    list.innerHTML = data.barcodes.map(bc => `
+                        <div class="barcode-item">
+                            <div>
+                                <a href="${API_BASE}${bc.url}" target="_blank">${bc.filename}</a>
+                                <p style="font-size: 0.8em; color: #00ff8877; margin-top: 3px;">${(bc.size / 1024).toFixed(2)} KB</p>
+                            </div>
+                            <button class="btn btn-danger" style="width: auto; padding: 8px 12px; font-size: 0.8em;" onclick="deleteBarcode('${bc.filename}')">🗑️ DEL</button>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                console.error('Load barcodes error:', e);
+            }
+        }
+        
+        async function deleteBarcode(filename) {
+            if (!confirm(`DELETE ${filename}?`)) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/barcode/${filename}`, { method: 'DELETE' });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showBarcodeMessage(data.message, 'success');
+                    loadBarcodes();
+                } else {
+                    showBarcodeMessage(data.message, 'error');
+                }
+            } catch (e) {
+                showBarcodeMessage(`ERROR: ${e.message}`, 'error');
+            }
+        }
+        
+        // ============ UTILITIES ============
+        function showMessage(msg, type) {
+            const el = document.getElementById('statusMessage');
+            el.textContent = msg;
+            el.className = `message show ${type}`;
+            setTimeout(() => el.classList.remove('show'), 5000);
+        }
+        
+        function showBarcodeMessage(msg, type) {
+            const el = document.getElementById('barcodeMessage');
+            el.textContent = msg;
+            el.className = `message show ${type}`;
+            setTimeout(() => el.classList.remove('show'), 5000);
+        }
+        
+        // ============ INIT ============
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStatus();
+            updateLastNumber();
+            loadBarcodes();
+            connectWebSocket();
+            
+            statusRefreshInterval = setInterval(() => {
+                if (document.hidden === false) {
+                    updateStatus();
+                    updateLastNumber();
+                }
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

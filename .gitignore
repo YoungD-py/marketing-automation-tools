@@ -53,6 +53,9 @@ desktop.ini
 .wdm/
 chromedriver.exe
 
+# ngrok binary
+ngrok.exe
+
 # Logs
 *.log
 

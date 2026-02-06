@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+import sys
+# Force flush output immediately untuk WebSocket log streaming
+sys.stdout = type(sys.stdout)(sys.stdout.buffer, encoding='utf-8', errors='strict', line_buffering=True)
+sys.stderr = type(sys.stderr)(sys.stderr.buffer, encoding='utf-8', errors='strict', line_buffering=True)
+
 # VERSI 20.0 - THE UNBREAKABLE (DENGAN LOGIKA RETRY)
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -17,7 +23,13 @@ import random
 
 # === PENGATURAN ===
 FILE_NOMOR = "nomor.txt"
-FILE_PROMOSI = "promosi.txt"
+FILE_PROMOSI_LIST = [
+    "promosi1.txt",
+    "promosi2.txt",
+    "promosi3.txt",
+    "promosi4.txt",
+    "promosi5.txt",
+]  # Buat 3-5 file promosi dengan text berbeda
 FILE_GAMBAR = "barcode.jpg"
 FILE_LOG_TERKIRIM = "log_terkirim.txt"  # File untuk track nomor yang sudah terkirim
 
@@ -42,6 +54,11 @@ PROXY_ENABLED = False  # Ubah ke True jika mau pakai proxy
 # === JEDA ANTAR NOMOR (detik) ===
 JEDA_MIN = 30  # Minimum jeda
 JEDA_MAX = 60  # Maximum jeda
+
+# === BATCH SETTINGS (RITME HUMAN-LIKE) ===
+NOMOR_PER_BATCH = 12  # Kirim 10-15 nomor per batch
+PAUSE_BATCH_MIN = 300  # Pause 5 menit (300 detik) setelah batch
+PAUSE_BATCH_MAX = 600  # Max pause 10 menit (600 detik)
 
 # === HELPER CLIPBOARD ===
 def get_random_user_agent():
@@ -71,6 +88,29 @@ def load_log_terkirim():
             return set(line.strip() for line in f if line.strip())
     except FileNotFoundError:
         return set()
+
+
+def get_random_promosi():
+    """Load promosi text yang ada dan return salah satu secara random."""
+    # Filter file yang benar-benar ada
+    available_files = [f for f in FILE_PROMOSI_LIST if os.path.exists(f)]
+    
+    if not available_files:
+        print("❌ ERROR: Tidak ada file promosi yang ditemukan!")
+        print(f"   Coba buat minimal salah satu dari: {FILE_PROMOSI_LIST}")
+        return None
+    
+    # Pilih salah satu file random
+    selected_file = random.choice(available_files)
+    
+    try:
+        with open(selected_file, "r", encoding="utf-8") as f:
+            text = f.read().strip()
+        print(f"   📄 Promosi dipilih: {selected_file}")
+        return text
+    except Exception as e:
+        print(f"❌ Error membaca {selected_file}: {e}")
+        return None
 
 
 def save_to_log_terkirim(nomor):
@@ -173,14 +213,18 @@ except Exception as e:
     exit()
 
 # === MEMBACA FILE-FILE PENDUKUNG ===
-try:
-    with open(FILE_PROMOSI, "r", encoding="utf-8") as f:
-        teks_promosi_dari_file = f.read()
-    print(f"✅ TEKS E BENER '{FILE_PROMOSI}'")
-except FileNotFoundError:
-    print(f"❌ ERROR: TEKS E ERROR COK '{FILE_PROMOSI}' GAK NEMU!")
+# Check file promosi tersedia
+available_promosi = [f for f in FILE_PROMOSI_LIST if os.path.exists(f)]
+if available_promosi:
+    print(f"✅ DITEMUKAN {len(available_promosi)} FILE PROMOSI: {available_promosi}")
+else:
+    print(f"❌ ERROR: TIDAK ADA FILE PROMOSI DITEMUKAN!")
+    print(f"   Buat file-file ini dengan teks promosi berbeda:")
+    for f in FILE_PROMOSI_LIST[:3]:
+        print(f"   - {f}")
     driver.quit()
     exit()
+
 try:
     with open(FILE_NOMOR, "r", encoding="utf-8") as f:
         nomor_list = [line.strip() for line in f if line.strip()]
@@ -226,144 +270,183 @@ XPATH_KOTAK_CAPTION = '/html/body/div[1]/div/div/div/div/div[3]/div/div[3]/div[2
 XPATH_TOMBOL_KIRIM_GAMBAR = '/html/body/div[1]/div/div/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[2]/div[2]/span/div/div/span'
 
 # === PROSES UTAMA PENGIRIMAN PESAN ===
-for nomor in nomor_list:
-    # Convert 0XX -> 62XX (Indonesia format)
-    if nomor.startswith("0"):
-        nomor = "62" + nomor[1:]
-    
-    pesan_terkirim = False
-    # --- LOGIKA RETRY ---
-    for attempt in range(3): # PERCOBAAN 3X SETIAP NOMOR
-        try:
-            print(f"📩 PROSES NOMOR: {nomor} (Percobaan {attempt + 1})")
-            url = f"https://web.whatsapp.com/send?phone={nomor}"
-            driver.get(url)
+# === PROSES UTAMA PENGIRIMAN PESAN (BATCH MODE) ===
+print(f"\n{'='*60}")
+print(f"📊 TOTAL NOMOR: {len(nomor_list)}")
+print(f"📦 BATCH SIZE: {NOMOR_PER_BATCH} nomor per batch")
+print(f"⏸️  PAUSE ANTAR BATCH: {PAUSE_BATCH_MIN//60}-{PAUSE_BATCH_MAX//60} menit")
+print(f"{'='*60}\n")
 
-            print("   - NGENTENI HALAMAN CHAT MBUKAK...")
-            
-            chat_terbuka = False
-            waktu_mulai = time.time()
-            waktu_maksimal = 60  # Tunggu 60 detik, kalau masih blank refresh
-            refresh_done = False
-            
-            while time.time() - waktu_mulai < waktu_maksimal:
-                try:
-                    # Cek apakah tombol lampirkan sudah muncul (artinya chat berhasil terbuka)
-                    driver.find_element(By.XPATH, XPATH_TOMBOL_LAMPIRKAN)
-                    print("   - CHAT BERHASIL TERBUKA!")
-                    chat_terbuka = True
-                    break
-                except:
-                    # Cek apakah ada indikasi nomor tidak terdaftar/tidak aktif
+# Pisah nomor jadi batch-batch
+batches = [nomor_list[i:i+NOMOR_PER_BATCH] for i in range(0, len(nomor_list), NOMOR_PER_BATCH)]
+total_batches = len(batches)
+
+for batch_num, batch in enumerate(batches, 1):
+    print(f"\n{'='*60}")
+    print(f"🔄 BATCH {batch_num}/{total_batches} ({len(batch)} nomor)")
+    print(f"{'='*60}")
+    
+    for nomor in batch:
+        # Convert 0XX -> 62XX (Indonesia format)
+        if nomor.startswith("0"):
+            nomor = "62" + nomor[1:]
+        
+        pesan_terkirim = False
+        # --- LOGIKA RETRY ---
+        for attempt in range(3): # PERCOBAAN 3X SETIAP NOMOR
+            try:
+                print(f"📩 PROSES NOMOR: {nomor} (Percobaan {attempt + 1})")
+                
+                # === GET RANDOM PROMOSI SETIAP NOMOR ===
+                teks_promosi_dari_file = get_random_promosi()
+                if not teks_promosi_dari_file:
+                    raise Exception("Gagal load promosi")
+                
+                url = f"https://web.whatsapp.com/send?phone={nomor}"
+                driver.get(url)
+
+                print("   - NGENTENI HALAMAN CHAT MBUKAK...")
+                
+                chat_terbuka = False
+                waktu_mulai = time.time()
+                waktu_maksimal = 60  # Tunggu 60 detik, kalau masih blank refresh
+                refresh_done = False
+                
+                while time.time() - waktu_mulai < waktu_maksimal:
                     try:
-                        error_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Phone number shared via url is invalid')]")
-                        if error_elements:
-                            print("   - NOMOR TIDAK VALID/TIDAK TERDAFTAR.")
-                            break
+                        # Cek apakah tombol lampirkan sudah muncul (artinya chat berhasil terbuka)
+                        driver.find_element(By.XPATH, XPATH_TOMBOL_LAMPIRKAN)
+                        print("   - CHAT BERHASIL TERBUKA!")
+                        chat_terbuka = True
+                        break
                     except:
-                        pass
-                    
-                    # Cek kalau layar blank >20 detik, refresh
-                    if (time.time() - waktu_mulai) > 20 and not refresh_done:
+                        # Cek apakah ada indikasi nomor tidak terdaftar/tidak aktif
                         try:
-                            body_text = driver.execute_script("return document.body.innerText.length;")
-                            if body_text < 20:
-                                print("   - BLANK SCREEN TERDETEKSI, REFRESH...")
-                                driver.refresh()
-                                refresh_done = True
+                            error_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Phone number shared via url is invalid')]")
+                            if error_elements:
+                                print("   - NOMOR TIDAK VALID/TIDAK TERDAFTAR.")
+                                break
                         except:
                             pass
-                    
-                    time.sleep(2)
-            
-            if not chat_terbuka:
-                if time.time() - waktu_mulai >= waktu_maksimal:
-                    print("   - TIMEOUT: CHAT TIDAK TERBUKA SETELAH 60 DETIK")
-                else:
-                    print("   - NOMOR TIDAK VALID, SKIP KE NOMOR BERIKUTNYA")
-                raise Exception("Chat tidak terbuka atau nomor tidak valid")
-
-            # === CHECK APAKAH SUDAH PERNAH KIRIM KE NOMOR INI ===
-            print("   - CHECKING CHAT HISTORY...")
-            if check_sudah_pernah_kirim(driver):
-                print(f"⏭️ SKIP NOMOR {nomor} (SUDAH PERNAH DIKIRIM)")
-                raise Exception("Sudah pernah dikirim ke nomor ini (detected dari chat history)")
-            
-            # Klik kolom pesan input (XPATH message input yang user berikan)
-            message_input = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/div/div/div/div[3]/div/div[5]/div/footer/div[1]/div/span/div/div/div/div[3]/div[1]/p'))
-            )
-            message_input.click()
-            print("   - NGEKLIK KOLOM PESAN...")
-            time.sleep(1)
-
-            # Copy gambar ke clipboard
-            if not copy_image_to_clipboard(gambar_path):
-                raise Exception("Gagal copy gambar ke clipboard")
-            print("   - GAMBAR DICOPY KE CLIPBOARD...")
-            time.sleep(1)
-
-            # Paste gambar dengan Ctrl+V
-            message_input.send_keys(Keys.CONTROL, 'v')
-            print("   - GAMBAR DI-PASTE KE PESAN...")
-            time.sleep(3)
-
-            # Tunggu kolom caption preview muncul
-            caption_preview = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, XPATH_KOTAK_CAPTION))
-            )
-            print("   - PREVIEW GAMBAR MUNCUL, NGENTENI KOLOM CAPTION...")
-            time.sleep(2)
-
-            # Ketik caption di kolom caption preview dengan HUMAN-LIKE TYPING
-            print("   - NGETIK CAPTION (HUMAN-LIKE SPEED)...")
-            lines = teks_promosi_dari_file.split('\n')
-            for idx, line in enumerate(lines):
-                # Ketik karakter per karakter dengan random delay
-                type_like_human(caption_preview, line)
+                        
+                        # Cek kalau layar blank >20 detik, refresh
+                        if (time.time() - waktu_mulai) > 20 and not refresh_done:
+                            try:
+                                body_text = driver.execute_script("return document.body.innerText.length;")
+                                if body_text < 20:
+                                    print("   - BLANK SCREEN TERDETEKSI, REFRESH...")
+                                    driver.refresh()
+                                    refresh_done = True
+                            except:
+                                pass
+                        
+                        time.sleep(2)
                 
-                # Enter untuk line break (kecuali line terakhir)
-                if idx < len(lines) - 1:
-                    caption_preview.send_keys(Keys.SHIFT, Keys.ENTER)
-                    time.sleep(random.uniform(0.1, 0.3))
-            
-            print("   - CAPTION KELAR DIKETIK.")
-            time.sleep(2)
+                if not chat_terbuka:
+                    if time.time() - waktu_mulai >= waktu_maksimal:
+                        print("   - TIMEOUT: CHAT TIDAK TERBUKA SETELAH 60 DETIK")
+                    else:
+                        print("   - NOMOR TIDAK VALID, SKIP KE NOMOR BERIKUTNYA")
+                    raise Exception("Chat tidak terbuka atau nomor tidak valid")
 
-            # Klik tombol kirim
-            WebDriverWait(driver, 20).until(
-                EC.element_to_be_clickable((By.XPATH, XPATH_TOMBOL_KIRIM_GAMBAR))
-            ).click()
-            print("   - TOMBOL KIRIM DIKLIK...")
+                # === CHECK APAKAH SUDAH PERNAH KIRIM KE NOMOR INI ===
+                print("   - CHECKING CHAT HISTORY...")
+                if check_sudah_pernah_kirim(driver):
+                    print(f"⏭️ SKIP NOMOR {nomor} (SUDAH PERNAH DIKIRIM)")
+                    raise Exception("Sudah pernah dikirim ke nomor ini (detected dari chat history)")
+                
+                # Klik kolom pesan input (XPATH message input yang user berikan)
+                message_input = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/div/div/div/div[3]/div/div[5]/div/footer/div[1]/div/span/div/div/div/div[3]/div[1]/p'))
+                )
+                message_input.click()
+                print("   - NGEKLIK KOLOM PESAN...")
+                time.sleep(1)
 
-            print("   - NGENTENI KONFIRMASI PENGIRIMAN...")
-            WebDriverWait(driver, 30).until(
-                EC.invisibility_of_element_located((By.XPATH, XPATH_TOMBOL_KIRIM_GAMBAR))
-            )
-            time.sleep(15)
-            
-            # === SAVE KE LOG TERKIRIM ===
-            save_to_log_terkirim(nomor)
-            print(f"✅ Pesan ke {nomor} telah terkirim dengan sukses.")
-            print(f"📋 Nomor ini sudah di-save ke log_terkirim.txt")
-            pesan_terkirim = True
-            break
+                # Copy gambar ke clipboard
+                if not copy_image_to_clipboard(gambar_path):
+                    raise Exception("Gagal copy gambar ke clipboard")
+                print("   - GAMBAR DICOPY KE CLIPBOARD...")
+                time.sleep(1)
 
-        except StaleElementReferenceException:
-            print(f"   - ❗️ TERDETEKSI KONTOL KONTOLAN NYOBA ULANG...")
-            time.sleep(2)
-            continue
-        except Exception as e:
-            print(f"❌ WA E GAK ONOK NOMOR E COK: {e}")
-            break
+                # Paste gambar dengan Ctrl+V
+                message_input.send_keys(Keys.CONTROL, 'v')
+                print("   - GAMBAR DI-PASTE KE PESAN...")
+                time.sleep(3)
+
+                # Tunggu kolom caption preview muncul
+                caption_preview = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, XPATH_KOTAK_CAPTION))
+                )
+                print("   - PREVIEW GAMBAR MUNCUL, NGENTENI KOLOM CAPTION...")
+                time.sleep(2)
+
+                # Ketik caption di kolom caption preview dengan HUMAN-LIKE TYPING
+                print("   - NGETIK CAPTION (HUMAN-LIKE SPEED)...")
+                lines = teks_promosi_dari_file.split('\n')
+                for idx, line in enumerate(lines):
+                    # Ketik karakter per karakter dengan random delay
+                    type_like_human(caption_preview, line)
+                    
+                    # Enter untuk line break (kecuali line terakhir)
+                    if idx < len(lines) - 1:
+                        caption_preview.send_keys(Keys.SHIFT, Keys.ENTER)
+                        time.sleep(random.uniform(0.1, 0.3))
+                
+                print("   - CAPTION KELAR DIKETIK.")
+                time.sleep(2)
+
+                # Klik tombol kirim
+                WebDriverWait(driver, 20).until(
+                    EC.element_to_be_clickable((By.XPATH, XPATH_TOMBOL_KIRIM_GAMBAR))
+                ).click()
+                print("   - TOMBOL KIRIM DIKLIK...")
+
+                print("   - NGENTENI KONFIRMASI PENGIRIMAN...")
+                WebDriverWait(driver, 30).until(
+                    EC.invisibility_of_element_located((By.XPATH, XPATH_TOMBOL_KIRIM_GAMBAR))
+                )
+                time.sleep(15)
+                
+                # === SAVE KE LOG TERKIRIM ===
+                save_to_log_terkirim(nomor)
+                print(f"✅ Pesan ke {nomor} telah terkirim dengan sukses.")
+                print(f"📋 Nomor ini sudah di-save ke log_terkirim.txt")
+                pesan_terkirim = True
+                break
+
+            except StaleElementReferenceException:
+                print(f"   - ❗️ TERDETEKSI KONTOL KONTOLAN NYOBA ULANG...")
+                time.sleep(2)
+                continue
+            except Exception as e:
+                print(f"❌ WA E GAK ONOK NOMOR E COK: {e}")
+                break
+        
+        if not pesan_terkirim:
+            print(f"⚠️ GAGAL KIRIM PESAN {nomor} SETELAH NGE TRY BERULANG.")
+        else:
+            # === JEDA PANJANG SEBELUM NOMOR BERIKUTNYA (untuk avoid detect) ===
+            jeda_random = random.uniform(JEDA_MIN, JEDA_MAX)
+            print(f"⏳ MENUNGGU {jeda_random:.1f} DETIK SEBELUM NOMOR BERIKUTNYA (UNTUK AVOID DETECT)...")
+            time.sleep(jeda_random)
     
-    if not pesan_terkirim:
-        print(f"⚠️ GAGAL KIRIM PESAN {nomor} SETELAH NGE TRY BERULANG.")
-    else:
-        # === JEDA PANJANG SEBELUM NOMOR BERIKUTNYA (untuk avoid detect) ===
-        jeda_random = random.uniform(JEDA_MIN, JEDA_MAX)
-        print(f"⏳ MENUNGGU {jeda_random:.1f} DETIK SEBELUM NOMOR BERIKUTNYA (UNTUK AVOID DETECT)...")
-        time.sleep(jeda_random)
+    # === PAUSE ANTAR BATCH ===
+    if batch_num < total_batches:
+        pause_duration = random.uniform(PAUSE_BATCH_MIN, PAUSE_BATCH_MAX)
+        print(f"\n{'='*60}")
+        print(f"⏸️  BATCH {batch_num} SELESAI! ISTIRAHAT {pause_duration:.0f} DETIK ({pause_duration//60:.0f} MENIT)")
+        print(f"{'='*60}")
+        
+        # Countdown timer
+        for i in range(int(pause_duration), 0, -1):
+            sisa_menit = i // 60
+            sisa_detik = i % 60
+            print(f"   ⏱️  SISA WAKTU: {sisa_menit}:{sisa_detik:02d} (batch berikutnya segera dimulai)", end='\r')
+            time.sleep(1)
+        print(f"\n   🔄 BATCH BERIKUTNYA DIMULAI!\n")
 
 driver.quit()
-print("\n\n SISTEM KELAR BOS BISA LU TINGGAL NGENTOTAN")
+print(f"\n\n{'='*60}")
+print("✨ SISTEM SELESAI BOS BISA LU TINGGAL NGENTOTAN")
+print(f"{'='*60}")
