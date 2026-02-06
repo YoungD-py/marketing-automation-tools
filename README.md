@@ -22,6 +22,8 @@ Automated bulk messaging system for WhatsApp Web using Selenium. Designed for bu
 - 🌐 **Proxy Support** - Optional proxy rotation (requires setup)
 - 🎯 **Retry Logic** - 3 attempts per number with error handling
 - 📸 **Image Support** - Send promotional images via clipboard paste
+- 🧩 **Dashboard Control** - Start/stop bot, realtime logs, status, last number
+- 🎨 **Barcode Generator** - Create QR codes with optional logo overlay
 
 ## 📋 Requirements
 
@@ -45,7 +47,7 @@ pip install selenium webdriver-manager Pillow pywin32
 
 3. Prepare your files:
    - `nomor.txt` - Phone numbers (one per line, format: 6281234567890)
-   - `promosi.txt` - Message text/caption
+    - `promosi1.txt` ... `promosi5.txt` - Message variants (3-5 files)
    - `barcode.jpg` - Image to send (optional)
 
 ## 📖 Usage
@@ -83,12 +85,43 @@ PROXY_LIST = [
 .
 ├── script.py              # Main automation script
 ├── nomor.txt              # Phone numbers (not included)
-├── promosi.txt            # Message text (not included)
+├── promosi1.txt           # Message text variants (not included)
+├── promosi2.txt
+├── promosi3.txt
+├── promosi4.txt
+├── promosi5.txt
 ├── barcode.jpg            # Image to send (not included)
 ├── log_terkirim.txt       # Sent numbers log
 ├── whatsapp_profile/      # Chrome profile data
+├── DASHBOARD/             # FastAPI dashboard
+│   ├── app.py
+│   ├── bot_manager.py
+│   ├── barcode_generator.py
+│   ├── requirements.txt
+│   └── static/index.html
+├── docs/screenshots/      # Screenshot assets
 └── README.md              # This file
 ```
+
+## 🧭 Dashboard (FastAPI)
+
+Control bot dari browser (start/stop/status/log realtime) dan generate barcode.
+
+```bash
+cd DASHBOARD
+pip install -r requirements.txt
+python app.py
+```
+
+Open:
+- Local: http://127.0.0.1:8000
+- Ngrok: `ngrok http 8000`
+
+### 📸 Dashboard Screenshot
+
+Add your screenshot here:
+
+![Dashboard Screenshot](docs/screenshots/dashboard.png)
 
 ## 🛡️ Anti-Detection Features
 
