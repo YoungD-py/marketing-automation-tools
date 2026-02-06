@@ -15,6 +15,7 @@ barcode.jpg
 *.jpeg
 *.png
 *.gif
+!docs/screenshots/*.png
 
 # Error Screenshots
 error_*.png
