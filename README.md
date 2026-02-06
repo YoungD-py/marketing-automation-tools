@@ -119,8 +119,6 @@ Open:
 
 ### 📸 Dashboard Screenshot
 
-Add your screenshot here:
-
 ![Dashboard Screenshot](docs/screenshots/dashboard.png)
 
 ## 🛡️ Anti-Detection Features
